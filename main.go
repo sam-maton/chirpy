@@ -1,16 +1,24 @@
 package main
 
-import "net/http"
+import (
+	"net/http"
+	"sync/atomic"
+)
+
+func appIndexHandler() http.Handler {
+	return http.StripPrefix("/app/", http.FileServer(http.Dir("./")))
+}
 
 func main() {
+	apiCfg := apiConfig{
+		fileServerHits: atomic.Int32{},
+	}
 	mux := http.NewServeMux()
-	mux.Handle("/app/", http.StripPrefix("/app/", http.FileServer(http.Dir("./"))))
 
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(200)
-		w.Write([]byte("OK"))
-	})
+	mux.Handle("/app/", apiCfg.middlewareMetricInc(appIndexHandler()))
+	mux.HandleFunc("GET /healthz", handlerReadiness)
+	mux.HandleFunc("GET /metrics", apiCfg.handlerMetricHits)
+	mux.HandleFunc("POST /reset", apiCfg.handlerReset)
 
 	server := http.Server{
 		Handler: mux,
