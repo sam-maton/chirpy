@@ -39,3 +39,7 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJson(w, 200, validParams{CleanedBody: clean})
 }
+
+func handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+
+}
