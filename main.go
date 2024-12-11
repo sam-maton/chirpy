@@ -1,8 +1,10 @@
 package main
 
 import (
+	"log"
 	"net/http"
-	"sync/atomic"
+
+	_ "github.com/lib/pq"
 )
 
 func appIndexHandler() http.Handler {
@@ -14,9 +16,7 @@ func redirectToApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	apiCfg := apiConfig{
-		fileServerHits: atomic.Int32{},
-	}
+	apiCfg := setupConfig()
 	mux := http.NewServeMux()
 
 	//App Handlers
@@ -36,5 +36,6 @@ func main() {
 		Addr:    ":8080",
 	}
 
+	log.Printf("Running chirpy server on http://localhost%s", server.Addr)
 	server.ListenAndServe()
 }
