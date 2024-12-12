@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/sam-maton/chirpy/internal/auth"
 	"github.com/sam-maton/chirpy/internal/database"
 )
 
@@ -47,7 +48,8 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
 	type params struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	decoder := json.NewDecoder(r.Body)
 	p := params{}
@@ -58,7 +60,19 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := cfg.db.CreateUser(r.Context(), p.Email)
+	hashedPW, err := auth.HashPassword(p.Password)
+
+	if err != nil {
+		respondWithError(w, "There was an error hashing the password", http.StatusInternalServerError, err)
+		return
+	}
+
+	userParams := database.CreateUserParams{
+		Email:          p.Email,
+		HashedPassword: hashedPW,
+	}
+
+	user, err := cfg.db.CreateUser(r.Context(), userParams)
 
 	if err != nil {
 		respondWithError(w, "There was an error creating the user", http.StatusInternalServerError, err)
@@ -66,6 +80,40 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	respondWithJson(w, 201, user)
+}
+
+func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
+	type params struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	p := params{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&p)
+
+	if err != nil {
+		respondWithError(w, paramsDecodeError, 400, err)
+	}
+
+	user, err := cfg.db.GetUserByEmail(r.Context(), p.Email)
+
+	if err != nil {
+		respondWithError(w, "No user exists with that email address", 400, err)
+	}
+
+	err = auth.CheckPasswordHash(p.Password, user.HashedPassword)
+
+	if err != nil {
+		respondWithError(w, "Wrong password", 401, err)
+		return
+	}
+
+	respondWithJson(w, 200, database.User{
+		ID:    user.ID,
+		Email: user.Email,
+	})
+
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
