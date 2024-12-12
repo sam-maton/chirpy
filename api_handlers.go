@@ -40,6 +40,29 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 200, validParams{CleanedBody: clean})
 }
 
-func handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
+	type params struct {
+		Email string `json:"email"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	p := params{}
+	err := decoder.Decode(&p)
+
+	if err != nil {
+		respondWithError(w, "There was an error decoding the params", http.StatusInternalServerError, err)
+		return
+	}
+
+	user, err := cfg.db.CreateUser(r.Context(), p.Email)
+
+	if err != nil {
+		respondWithError(w, "There was an error creating the user", http.StatusInternalServerError, err)
+		return
+	}
+
+	respondWithJson(w, 201, user)
+}
+
+func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 
 }

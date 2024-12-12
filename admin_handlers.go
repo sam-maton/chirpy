@@ -18,6 +18,11 @@ func (cfg *apiConfig) handlerMetricHits(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
+	err := cfg.db.Reset(r.Context())
+
+	if err != nil {
+		respondWithError(w, "There was an error reseting the data", 400, err)
+	}
 	cfg.fileServerHits.Store(0)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Hits reset to 0"))
