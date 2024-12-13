@@ -10,9 +10,24 @@ import (
 	"github.com/sam-maton/chirpy/internal/database"
 )
 
+type apiConfig struct {
+	fileServerHits atomic.Int32
+	db             *database.Queries
+	jwtSecret      string
+}
+
 func setupConfig() apiConfig {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	secret := os.Getenv("SECRET")
+
+	if dbURL == "" {
+		log.Fatal("DB_URL environment variable must be set")
+	}
+
+	if secret == "" {
+		log.Fatal("SECRET environment variable must be set")
+	}
 
 	db, err := sql.Open("postgres", dbURL)
 
@@ -26,10 +41,6 @@ func setupConfig() apiConfig {
 	return apiConfig{
 		fileServerHits: atomic.Int32{},
 		db:             dbQueries,
+		jwtSecret:      secret,
 	}
-}
-
-type apiConfig struct {
-	fileServerHits atomic.Int32
-	db             *database.Queries
 }
