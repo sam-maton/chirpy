@@ -139,27 +139,40 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, "There was no auth token in the header", http.StatusUnauthorized, err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, "Invalid auth token", http.StatusUnauthorized, err)
+		return
+	}
+
 	type params struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 	p := params{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&p)
 
+	err = decoder.Decode(&p)
 	if err != nil {
 		respondWithError(w, paramsDecodeError, 400, err)
+		return
 	}
 
 	createParams := database.CreateChirpParams{
 		Body:   p.Body,
-		UserID: p.UserID,
+		UserID: userId,
 	}
 
 	chirp, err := cfg.db.CreateChirp(r.Context(), createParams)
-
 	if err != nil {
 		respondWithError(w, "There was an error creating the chirp", 400, err)
+		return
 	}
 
 	respondWithJson(w, 201, chirp)
