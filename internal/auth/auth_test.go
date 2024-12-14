@@ -12,18 +12,33 @@ import (
 // }
 
 func TestGetBearerToken(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		header := http.Header{}
-		header.Add("Authorization", "Bearer Success")
 
-		got, err := GetBearerToken(header)
+	tests := []struct {
+		name      string
+		want      string
+		expectErr bool
+		header    http.Header
+	}{
+		{
+			name:      "Got correct response",
+			want:      "Success",
+			expectErr: false,
+			header: http.Header{
+				"Authorization": []string{"Bearer Success"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetBearerToken(tt.header)
 
-		if got != "Success" {
-			t.Errorf("got %s, want Success", got)
-		}
+			if got != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
+			}
 
-		if err != nil {
-			t.Errorf("expected no error but got %s", err)
-		}
-	})
+			if (err != nil) != tt.expectErr {
+				t.Errorf("GetBearerToken() err = %v, expectErr = %v", err, tt.expectErr)
+			}
+		})
+	}
 }
