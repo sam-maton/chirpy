@@ -5,12 +5,6 @@ import (
 	"testing"
 )
 
-// type TestRun struct {
-// 	params   map[string]any
-// 	want     string
-// 	hasError bool
-// }
-
 func TestGetBearerToken(t *testing.T) {
 
 	tests := []struct {
@@ -25,6 +19,14 @@ func TestGetBearerToken(t *testing.T) {
 			expectErr: false,
 			header: http.Header{
 				"Authorization": []string{"Bearer Success"},
+			},
+		},
+		{
+			name:      "Got incorrect response",
+			want:      "",
+			expectErr: true,
+			header: http.Header{
+				"Authorization": []string{"Incorrect_token"},
 			},
 		},
 	}
