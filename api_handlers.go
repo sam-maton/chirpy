@@ -169,7 +169,14 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, "There was an error creating the new JWT", http.StatusInternalServerError, err)
+	}
 
+	// Return refresh token
+	respondWithJson(w, 200, struct{ token string }{
+		token: newToken,
+	})
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
