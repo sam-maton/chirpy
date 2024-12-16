@@ -85,9 +85,8 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 
 func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	type params struct {
-		Email            string `json:"email"`
-		Password         string `json:"password"`
-		ExpiresInSeconds int    `json:"expires_in_seconds"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	type response struct {
@@ -116,26 +115,54 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	expireTime := time.Hour
-
-	if p.ExpiresInSeconds > 0 && p.ExpiresInSeconds < 3600 {
-		expireTime = time.Duration(p.ExpiresInSeconds) * time.Second
-	}
-
 	accessToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expireTime)
 	if err != nil {
 		respondWithError(w, "Couldn't create JWT", http.StatusInternalServerError, err)
 		return
 	}
 
+	refreshToken, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, "Couldn't create refresh token", http.StatusInternalServerError, err)
+		return
+	}
+
+	refreshTokenParams := database.CreateRefreshTokenParams{
+		Token:     refreshToken,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		ExpiresAt: (time.Now().Add(time.Hour * 1440)),
+		UserID:    user.ID,
+	}
+	cfg.db.CreateRefreshToken(r.Context(), refreshTokenParams)
+
 	respondWithJson(w, 200, response{
 		User: database.User{
 			ID:    user.ID,
 			Email: user.Email,
 		},
-		Token: accessToken,
+		Token:        accessToken,
+		RefreshToken: refreshToken,
 	},
 	)
 
+}
+
+func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
+	headerToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, "There was no refresh token in the header", http.StatusUnauthorized, err)
+		return
+	}
+
+	refreshToken, err := cfg.db.GetRefreshTokenByToken(r.Context(), headerToken)
+	if err != nil {
+		respondWithError(w, "There was no refresh token", http.StatusUnauthorized, err)
+	}
+
+	if time.Now().After(refreshToken.ExpiresAt) {
+		respondWithError(w, "The refresh token has expired", http.StatusUnauthorized, nil)
+	}
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
