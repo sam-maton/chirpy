@@ -114,8 +114,7 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expireTime := time.Hour
-	accessToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expireTime)
+	accessToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret)
 	if err != nil {
 		respondWithError(w, "Couldn't create JWT", http.StatusInternalServerError, err)
 		return
@@ -163,6 +162,14 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 	if time.Now().After(refreshToken.ExpiresAt) {
 		respondWithError(w, "The refresh token has expired", http.StatusUnauthorized, nil)
 	}
+
+	user, err := cfg.db.GetUserByRefreshToken(r.Context(), refreshToken.Token)
+	if err != nil {
+		respondWithError(w, "There was an error getting the user by refresh token", http.StatusInternalServerError, err)
+	}
+
+	newToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret)
+
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
