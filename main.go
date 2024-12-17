@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -21,11 +19,6 @@ func main() {
 	apiCfg := setupConfig()
 	mux := http.NewServeMux()
 
-	token, err := apiCfg.db.GetRefreshTokenByToken(context.Background(), "adadasd")
-
-	fmt.Println(token)
-	fmt.Println(err)
-
 	//App Handlers
 	mux.HandleFunc("/", redirectToApp)
 	mux.Handle("/app/", apiCfg.middlewareMetricInc(appIndexHandler()))
@@ -38,6 +31,7 @@ func main() {
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
+	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", apiCfg.handlerGetOneChirp)

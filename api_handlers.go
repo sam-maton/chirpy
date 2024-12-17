@@ -157,26 +157,48 @@ func (cfg *apiConfig) handlerRefresh(w http.ResponseWriter, r *http.Request) {
 	refreshToken, err := cfg.db.GetRefreshTokenByToken(r.Context(), headerToken)
 	if err != nil {
 		respondWithError(w, "There was no refresh token", http.StatusUnauthorized, err)
+		return
 	}
 
-	if time.Now().After(refreshToken.ExpiresAt) {
-		respondWithError(w, "The refresh token has expired", http.StatusUnauthorized, nil)
+	if time.Now().After(refreshToken.ExpiresAt) || refreshToken.RevokedAt.Valid {
+		respondWithError(w, "The refresh token has expired or been revoked", http.StatusUnauthorized, nil)
+		return
 	}
 
 	user, err := cfg.db.GetUserByRefreshToken(r.Context(), refreshToken.Token)
 	if err != nil {
 		respondWithError(w, "There was an error getting the user by refresh token", http.StatusInternalServerError, err)
+		return
 	}
 
 	newToken, err := auth.MakeJWT(user.ID, cfg.jwtSecret)
 	if err != nil {
 		respondWithError(w, "There was an error creating the new JWT", http.StatusInternalServerError, err)
+		return
 	}
 
 	// Return refresh token
-	respondWithJson(w, 200, struct{ token string }{
-		token: newToken,
+	respondWithJson(w, 200, struct {
+		Token string `json:"token"`
+	}{
+		Token: newToken,
 	})
+}
+
+func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
+	headerToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, "There was no refresh token in the header", http.StatusUnauthorized, err)
+		return
+	}
+
+	err = cfg.db.RevokeRefreshToken(r.Context(), headerToken)
+	if err != nil {
+		respondWithError(w, "There was an issue revoking the refresh token", http.StatusUnauthorized, err)
+		return
+	}
+
+	respondWithJson(w, 204, struct{}{})
 }
 
 func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
