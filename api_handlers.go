@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -261,14 +262,30 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	authorId := r.URL.Query().Get("author_id")
 
-	chirps, err := cfg.db.GetChirps(r.Context())
+	if authorId != "" {
+		fmt.Println(authorId)
+		parsedId, err := uuid.Parse(authorId)
+		if err != nil {
+			respondWithError(w, "There was an error parsing the ID", http.StatusInternalServerError, err)
+			return
+		}
 
-	if err != nil {
-		respondWithError(w, "There was an error getting all the chirps", 400, err)
+		chirps, err := cfg.db.GetChirpsByUserID(r.Context(), parsedId)
+		if err != nil {
+			respondWithError(w, "There was an error getting all the chirps", 400, err)
+			return
+		}
+		respondWithJson(w, 200, chirps)
+	} else {
+		chirps, err := cfg.db.GetChirps(r.Context())
+		if err != nil {
+			respondWithError(w, "There was an error getting all the chirps", 400, err)
+			return
+		}
+		respondWithJson(w, 200, chirps)
 	}
-
-	respondWithJson(w, 200, chirps)
 }
 
 func (cfg *apiConfig) handlerGetOneChirp(w http.ResponseWriter, r *http.Request) {
@@ -361,6 +378,18 @@ func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request)
 
 // WEBHOOK HANDLERS
 func (cfg *apiConfig) handlerPolkaWebhook(w http.ResponseWriter, r *http.Request) {
+
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, "No API key was present", http.StatusUnauthorized, err)
+		return
+	}
+
+	if apiKey != cfg.polkaAPIKey {
+		respondWithError(w, "API key did not match the stored key", http.StatusUnauthorized, err)
+		return
+	}
+
 	type params struct {
 		Event string `json:"event"`
 		Data  struct {
@@ -370,7 +399,7 @@ func (cfg *apiConfig) handlerPolkaWebhook(w http.ResponseWriter, r *http.Request
 
 	p := params{}
 	decoder := json.NewDecoder(r.Body)
-	err := decoder.Decode(&p)
+	err = decoder.Decode(&p)
 
 	if err != nil {
 		respondWithError(w, paramsDecodeError, http.StatusBadRequest, err)
@@ -395,5 +424,4 @@ func (cfg *apiConfig) handlerPolkaWebhook(w http.ResponseWriter, r *http.Request
 	}
 
 	respondWithJson(w, 204, nil)
-
 }
