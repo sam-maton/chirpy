@@ -15,7 +15,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, created_at, updated_at, email, hashed_password)
 VALUES (gen_random_uuid(), NOW(), NOW(), $1, $2)
-RETURNING id, created_at, updated_at, email
+RETURNING id, created_at, updated_at, email, is_chirpy_red
 `
 
 type CreateUserParams struct {
@@ -24,10 +24,11 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -38,6 +39,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
@@ -65,7 +67,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET updated_at = NOW(), email = $2, hashed_password = $3
 WHERE id = $1
-RETURNING id, email, created_at, updated_at
+RETURNING id, email, created_at, updated_at, is_chirpy_red
 `
 
 type UpdateUserParams struct {
@@ -75,10 +77,11 @@ type UpdateUserParams struct {
 }
 
 type UpdateUserRow struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
@@ -89,21 +92,17 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateU
 		&i.Email,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
 
 const upgradeUser = `-- name: UpgradeUser :one
 UPDATE users
-SET updated_at = NOW(), is_chirpy_red = $2
+SET updated_at = NOW(), is_chirpy_red = true
 WHERE id = $1
 RETURNING id, email, updated_at, is_chirpy_red
 `
-
-type UpgradeUserParams struct {
-	ID          uuid.UUID `json:"id"`
-	IsChirpyRed bool      `json:"is_chirpy_red"`
-}
 
 type UpgradeUserRow struct {
 	ID          uuid.UUID `json:"id"`
@@ -112,8 +111,8 @@ type UpgradeUserRow struct {
 	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
-func (q *Queries) UpgradeUser(ctx context.Context, arg UpgradeUserParams) (UpgradeUserRow, error) {
-	row := q.db.QueryRowContext(ctx, upgradeUser, arg.ID, arg.IsChirpyRed)
+func (q *Queries) UpgradeUser(ctx context.Context, id uuid.UUID) (UpgradeUserRow, error) {
+	row := q.db.QueryRowContext(ctx, upgradeUser, id)
 	var i UpgradeUserRow
 	err := row.Scan(
 		&i.ID,

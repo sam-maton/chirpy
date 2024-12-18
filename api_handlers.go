@@ -61,9 +61,11 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type response struct {
-		User         database.User
-		Token        string `json:"token"`
-		RefreshToken string `json:"refresh_token"`
+		IsChirpyRed  bool      `json:"is_chirpy_red"`
+		ID           uuid.UUID `json:"id"`
+		Email        string    `json:"email"`
+		Token        string    `json:"token"`
+		RefreshToken string    `json:"refresh_token"`
 	}
 
 	p := params{}
@@ -107,10 +109,9 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	cfg.db.CreateRefreshToken(r.Context(), refreshTokenParams)
 
 	respondWithJson(w, 200, response{
-		User: database.User{
-			ID:    user.ID,
-			Email: user.Email,
-		},
+		ID:           user.ID,
+		Email:        user.Email,
+		IsChirpyRed:  user.IsChirpyRed,
 		Token:        accessToken,
 		RefreshToken: refreshToken,
 	},
@@ -355,5 +356,44 @@ func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(204)
+
+}
+
+// WEBHOOK HANDLERS
+func (cfg *apiConfig) handlerPolkaWebhook(w http.ResponseWriter, r *http.Request) {
+	type params struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID string `json:"user_id"`
+		} `json:"data"`
+	}
+
+	p := params{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&p)
+
+	if err != nil {
+		respondWithError(w, paramsDecodeError, http.StatusBadRequest, err)
+		return
+	}
+
+	if p.Event != "user.upgraded" {
+		respondWithJson(w, http.StatusNoContent, nil)
+		return
+	}
+
+	id, err := uuid.Parse(p.Data.UserID)
+	if err != nil {
+		respondWithError(w, "There was an issue parsing the user ID", http.StatusInternalServerError, err)
+		return
+	}
+
+	_, err = cfg.db.UpgradeUser(r.Context(), id)
+	if err != nil {
+		respondWithError(w, "There was an issue updating the user record", http.StatusInternalServerError, err)
+		return
+	}
+
+	respondWithJson(w, 204, nil)
 
 }
