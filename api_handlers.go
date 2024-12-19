@@ -119,19 +119,7 @@ func (cfg *apiConfig) handlerLoginUser(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, "There was no auth token in the header", http.StatusUnauthorized, err)
-		return
-	}
-
-	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
-	if err != nil {
-		respondWithError(w, "Invalid auth token", http.StatusUnauthorized, err)
-		return
-	}
-
+func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	type requestParams struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -139,7 +127,7 @@ func (cfg *apiConfig) handlerUpdateUser(w http.ResponseWriter, r *http.Request) 
 	rp := requestParams{}
 	decoder := json.NewDecoder(r.Body)
 
-	err = decoder.Decode(&rp)
+	err := decoder.Decode(&rp)
 	if err != nil {
 		respondWithError(w, paramsDecodeError, http.StatusInternalServerError, err)
 		return
@@ -221,19 +209,7 @@ func (cfg *apiConfig) handlerRevoke(w http.ResponseWriter, r *http.Request) {
 }
 
 // CHIRP HANDLERS
-func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
-
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, "There was no auth token in the header", http.StatusUnauthorized, err)
-		return
-	}
-
-	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
-	if err != nil {
-		respondWithError(w, "Invalid auth token", http.StatusUnauthorized, err)
-		return
-	}
+func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 
 	type params struct {
 		Body string `json:"body"`
@@ -241,7 +217,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 	p := params{}
 	decoder := json.NewDecoder(r.Body)
 
-	err = decoder.Decode(&p)
+	err := decoder.Decode(&p)
 	if err != nil {
 		respondWithError(w, paramsDecodeError, http.StatusInternalServerError, err)
 		return
@@ -336,19 +312,7 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, 200, validParams{CleanedBody: clean})
 }
 
-func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request) {
-	token, err := auth.GetBearerToken(r.Header)
-	if err != nil {
-		respondWithError(w, "There was no auth token in the header", http.StatusUnauthorized, err)
-		return
-	}
-
-	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
-	if err != nil {
-		respondWithError(w, "Invalid auth token", http.StatusUnauthorized, err)
-		return
-	}
-
+func (cfg *apiConfig) handlerDeleteChirp(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	pathID := r.PathValue("id")
 	chirpId, err := uuid.Parse(pathID)
 	if err != nil {
