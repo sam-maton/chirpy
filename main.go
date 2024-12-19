@@ -29,7 +29,7 @@ func main() {
 
 	//API Handlers
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
-	mux.HandleFunc("PUT /api/users", apiCfg.middlewareLogin(apiCfg.handlerUpdateUser))
+	mux.HandleFunc("PUT /api/users", apiCfg.middlewareAuth(apiCfg.handlerUpdateUser))
 
 	mux.HandleFunc("POST /api/login", apiCfg.handlerLoginUser)
 	mux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
@@ -37,8 +37,8 @@ func main() {
 
 	mux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", apiCfg.handlerGetOneChirp)
-	mux.HandleFunc("POST /api/chirps", apiCfg.middlewareLogin(apiCfg.handlerCreateChirp))
-	mux.HandleFunc("DELETE /api/chirps/{id}", apiCfg.middlewareLogin(apiCfg.handlerDeleteChirp))
+	mux.HandleFunc("POST /api/chirps", apiCfg.middlewareAuth(apiCfg.handlerCreateChirp))
+	mux.HandleFunc("DELETE /api/chirps/{id}", apiCfg.middlewareAuth(apiCfg.handlerDeleteChirp))
 
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)

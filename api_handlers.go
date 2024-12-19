@@ -239,6 +239,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request,
 
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
 	authorId := r.URL.Query().Get("author_id")
+	sortParam := r.URL.Query().Get("sort")
 
 	if authorId != "" {
 		fmt.Println(authorId)
@@ -253,11 +254,19 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 			respondWithError(w, "There was an error getting all the chirps", 400, err)
 			return
 		}
+		if sortParam == "desc" {
+			respondWithJson(w, 200, sortChirpsDesc(chirps))
+			return
+		}
 		respondWithJson(w, 200, chirps)
 	} else {
 		chirps, err := cfg.db.GetChirps(r.Context())
 		if err != nil {
 			respondWithError(w, "There was an error getting all the chirps", 400, err)
+			return
+		}
+		if sortParam == "desc" {
+			respondWithJson(w, 200, sortChirpsDesc(chirps))
 			return
 		}
 		respondWithJson(w, 200, chirps)
